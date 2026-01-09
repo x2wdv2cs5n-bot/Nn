@@ -1,0 +1,186 @@
+<!doctype html>
+<html lang="ar" dir="rtl">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>نموذج تواصل</title>
+  <style>
+    :root{
+      --bg:#fbfbfb; --card:#fff; --accent:#0a7f4a; --muted:#666;
+      --danger:#c0392b; --radius:10px;
+      font-family: "Segoe UI", Tahoma, "Helvetica Neue", Arial, "Noto Sans Arabic", sans-serif;
+    }
+    html,body{height:100%; margin:0; background:var(--bg); color:#111}
+    .wrap{max-width:540px;margin:3rem auto;padding:1.25rem}
+    .card{background:var(--card);padding:1.5rem;border-radius:var(--radius);box-shadow:0 6px 18px rgba(15,15,15,.06)}
+    h1{margin:0 0 0.75rem 0;font-size:1.25rem}
+    label{display:block;margin-bottom:.25rem;font-weight:600}
+    input[type="text"], input[type="email"], textarea{
+      width:100%;padding:.6rem .7rem;border:1px solid #e6e6e6;border-radius:8px;font-size:1rem;
+      box-sizing:border-box;
+    }
+    textarea{min-height:110px;resize:vertical}
+    .row{display:flex;gap:.5rem;flex-wrap:wrap}
+    .actions{display:flex;gap:.5rem;align-items:center;margin-top:1rem}
+    button, .wa-btn{
+      background:var(--accent); color:white;border:0;padding:.6rem .9rem;border-radius:8px;
+      font-size:1rem;cursor:pointer;
+    }
+    .wa-btn{background:#25D366;display:inline-flex;gap:.5rem;align-items:center}
+    .btn-secondary{background:transparent;border:1px solid #ddd;color:var(--muted)}
+    .status{margin-top:.75rem;color:var(--muted);font-size:.95rem}
+    .error{color:var(--danger)}
+    .sr-only{position:absolute;width:1px;height:1px;padding:0;margin:-1px;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap;border:0}
+    @media (prefers-reduced-motion:reduce){*{transition:none!important}}
+  </style>
+</head>
+<body>
+  <main class="wrap" aria-labelledby="contactTitle">
+    <section class="card" role="region" aria-label="نموذج التواصل">
+      <h1 id="contactTitle">تواصل معنا</h1>
+
+      <!-- form -->
+      <form id="contactForm" action="https://formspree.io/f/mqakpogk" method="POST" novalidate>
+        <!-- Formspree: email field must be named "email" -->
+        <div>
+          <label for="name">الاسم (اختياري)</label>
+          <input id="name" name="name" type="text" inputmode="text" placeholder="اسمك">
+        </div>
+
+        <div style="margin-top:.6rem">
+          <label for="email">بريدك الإلكتروني</label>
+          <input id="email" name="email" type="email" required placeholder="example@mail.com" aria-required="true" autocomplete="email">
+        </div>
+
+        <div style="margin-top:.6rem">
+          <label for="message">نص الرسالة</label>
+          <textarea id="message" name="message" placeholder="اكتب رسالتك أو استفسارك هنا (اختياري)"></textarea>
+        </div>
+
+        <!-- Hidden fields for Formspree and behavior -->
+        <input type="hidden" name="_language" value="ar">
+        <!-- _next used for non-AJAX fallback; script will redirect on success -->
+        <input type="hidden" id="_next" name="_next" value="thank-you.html">
+
+        <div class="actions" aria-live="polite">
+          <button id="submitBtn" type="submit">إرسال البيانات</button>
+
+          <!-- WhatsApp: both anchor (fallback) and JS button -->
+          <a id="waLinkFallback" class="wa-btn" href="https://wa.me/201007419083?text=%D9%85%D8%B1%D8%AD%D8%A8%D8%A7%D9%8B%20%D8%A3%D8%B1%D9%8A%D8%AF%20%D8%A7%D9%84%D8%A7%D8%B3%D8%AA%D9%81%D8%B3%D8%A7%D8%B1%20%D8%B9%D9%86%20%D8%A7%D9%84%D8%AE%D8%AF%D9%85%D8%A9" target="_blank" rel="noopener noreferrer">
+            <span aria-hidden="true">💬</span>
+            افتح واتساب
+          </a>
+
+          <button id="waBtn" type="button" class="btn-secondary" title="فتح واتساب" aria-label="فتح واتساب">واتساب (JS)</button>
+        </div>
+
+        <div id="status" class="status" role="status" aria-live="polite"></div>
+      </form>
+    </section>
+  </main>
+
+  <script>
+    // ====== Configuration ======
+    const form = document.getElementById('contactForm');
+    const submitBtn = document.getElementById('submitBtn');
+    const statusEl = document.getElementById('status');
+    const waBtn = document.getElementById('waBtn');
+    const waFallback = document.getElementById('waLinkFallback');
+
+    // رقم واتساب (بدون +) — 20 = مصر
+    const whatsappMobile = "201007419083";
+    const defaultMessage = "مرحباً، أريد الاستفسار عن الخدمة";
+    const waUrl = `https://wa.me/${whatsappMobile}?text=${encodeURIComponent(defaultMessage)}`;
+
+    // ضمان توافق الرابط الخلفي
+    waFallback.href = waUrl;
+
+    // زر واتساب يعمل بالـ JS (progressive enhancement)
+    waBtn.addEventListener('click', function () {
+      // يفتح الرابط في نافذة جديدة آمنة
+      window.open(waUrl, '_blank', 'noopener,noreferrer');
+    });
+
+    // ====== Client-side validation rules (simple) ======
+    function validateFormData(data) {
+      const errors = [];
+      if (!data.email) {
+        errors.push('الرجاء إدخال البريد الإلكتروني.');
+      } else {
+        // تحقق بسيط من تنسيق البريد
+        const re = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+        if (!re.test(data.email)) errors.push('البريد الإلكتروني غير صحيح.');
+      }
+      if (data.name && data.name.length > 200) errors.push('الاسم طويل جداً.');
+      if (data.message && data.message.length > 2000) errors.push('الرسالة طويلة جداً.');
+      return errors;
+    }
+
+    // ====== Submit handler using fetch to Formspree (AJAX) ======
+    form.addEventListener('submit', async function (e) {
+      e.preventDefault();
+
+      // Build payload
+      const formData = {
+        name: form.name.value.trim(),
+        email: form.email.value.trim(),
+        message: form.message.value.trim(),
+        _language: form._language?.value || 'ar'
+      };
+
+      // Validate
+      const errors = validateFormData(formData);
+      if (errors.length) {
+        statusEl.innerHTML = '<span class="error">' + errors.join(' ') + '</span>';
+        return;
+      }
+
+      // Prevent double submit
+      submitBtn.disabled = true;
+      submitBtn.textContent = 'جارٍ الإرسال...';
+      statusEl.textContent = '';
+
+      try {
+        const resp = await fetch(form.action, {
+          method: 'POST',
+          headers: {
+            'Accept': 'application/json',
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify(formData),
+          credentials: 'omit'
+        });
+
+        if (resp.ok) {
+          // If server responds with JSON, you can read it:
+          // const json = await resp.json();
+          // Redirect to thank-you page if present
+          const next = document.getElementById('_next')?.value || 'thank-you.html';
+          // Small delay for UX, then redirect
+          statusEl.textContent = 'تم إرسال رسالتك بنجاح — جاري التحويل...';
+          setTimeout(() => { window.location.href = next; }, 900);
+        } else {
+          // Formspree returns JSON errors; try to show them
+          let msg = 'حدث خطأ أثناء الإرسال. الرجاء المحاولة لاحقاً.';
+          try {
+            const data = await resp.json();
+            if (data?.error) msg = data.error;
+            else if (data?.errors && Array.isArray(data.errors)) {
+              msg = data.errors.map(x => x.message || x).join(' ');
+            }
+          } catch (err) {
+            // ignore parse error
+          }
+          statusEl.innerHTML = '<span class="error">' + msg + '</span>';
+          submitBtn.disabled = false;
+          submitBtn.textContent = 'إرسال البيانات';
+        }
+      } catch (err) {
+        statusEl.innerHTML = '<span class="error">تعذر الاتصال بالخادم. تحقق من اتصالك وحاول مرة أخرى.</span>';
+        submitBtn.disabled = false;
+        submitBtn.textContent = 'إرسال البيانات';
+      }
+    });
+  </script>
+</body>
+</html>
